@@ -1,55 +1,80 @@
 <!DOCTYPE html>
 <html lang="et">
-
 <head>
 <meta charset="UTF-8">
 <title>WanderWorld</title>
 
 <style>
 
-body {
-  background: #222;
-  color: white;
-  font-family: Arial;
-  text-align: center;
+body{
+    background-color:#222;
+    color:white;
+    font-family: Arial, sans-serif;
+    text-align:center;
+    margin:0;
+    padding:0;
 }
 
-#world {
-  width: 800px;
-  height: 600px;
-  background: #5cab5c;
-  border: 4px solid white;
-  margin: auto;
-  position: relative;
-  overflow: hidden;
+#world{
+    width:800px;
+    height:600px;
+    margin:20px auto;
+    background:#5cab5c;
+    border:4px solid #fff;
+    position:relative;
+    overflow:hidden;
+
 }
 
-.player {
-  position: absolute;
-  text-align: center;
+.player{
+    position:absolute;
+    text-align:center;
+    user-select:none;
 }
 
-.player img {
-  width: 32px;
-  height: 32px;
-  image-rendering: pixelated;
+.player img{
+    width:32px;
+    height:32px;
+    image-rendering:pixelated;
 }
 
-.name {
-  font-size: 12px;
+.name{
+    font-size:12px;
+    margin-top:2px;
+    text-shadow:1px 1px 2px black;
 }
 
-.bubble {
-  background: white;
-  color: black;
-  padding: 4px;
-  border-radius: 8px;
-  font-size: 12px;
-  margin-bottom: 4px;
+.bubble{
+    background:white;
+    color:black;
+    border-radius:7px;
+    padding:4px 6px;
+    font-size:12px;
+    margin-bottom:4px;
+    display:inline-block;
+    max-width:120px;
+    word-wrap:break-word;
 }
 
-#controls {
-  margin: 20px;
+#controls{
+    margin-top:20px;
+}
+
+input{
+    padding:6px;
+    border:none;
+    border-radius:4px;
+}
+
+button{
+    padding:6px 10px;
+    cursor:pointer;
+    border:none;
+    border-radius:4px;
+}
+
+button:hover{
+    opacity:0.9;
 }
 
 </style>
@@ -61,13 +86,13 @@ body {
 
 <div id="controls">
 
-<input id="username" placeholder="nimi">
-<button onclick="joinGame()">Join</button>
+    <input type="text" id="username" placeholder="nimi">
+    <button onclick="joinGame()">Join</button>
 
-<br><br>
+    <br><br>
 
-<input id="message" placeholder="ütle midagi">
-<button onclick="talk()">Talk</button>
+    <input type="text" id="message" placeholder="ütle midagi">
+    <button onclick="sendMessage()">Talk</button>
 
 </div>
 
@@ -75,166 +100,217 @@ body {
 
 <script>
 
-const URL = "https://tinkr.tech/sdb/poly/wander";
+const serverUrl = "https://tinkr.tech/sdb/poly/wander";
 
-let playerKey = localStorage.getItem("player_key");
+let savedKey = localStorage.getItem("player_key");
+let worldBox = document.getElementById("world");
 
-async function joinGame() {
 
-  let username = document.getElementById("username").value;
+async function joinGame(){
 
-  let response = await fetch(URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      action: "join",
-      username: username
-    })
-  });
+    let usernameInput = document.getElementById("username");
+    let username = usernameInput.value.trim();
 
-  let data = await response.json();
+    if(username === ""){
+        alert("Sisesta nimi");
+        return;
+    }
 
-  console.log(data);
+    try{
 
-  if (data.ok) {
+        let req = await fetch(serverUrl,{
+            method:"POST",
+            headers:{
+                "Content-Type":"application/json"
+            },
+            body:JSON.stringify({
+                action:"join",
+                username:username
+            })
+        });
 
-    playerKey = data.player_key;
+        let result = await req.json();
 
-    localStorage.setItem("player_key", playerKey);
+        console.log("join response:", result);
 
-    alert("Joined!");
+        if(result.ok){
 
-  } else {
+            savedKey = result.player_key;
 
-    alert(data.error);
+            localStorage.setItem("player_key", savedKey);
 
-  }
+            alert("Successfully joined");
 
-}
+        }else{
+            alert(result.error || "something went wrong");
+        }
 
-async function loadWorld() {
+    }catch(err){
 
-  let response = await fetch(URL);
-
-  let state = await response.json();
-
-  console.log(state);
-
-  let world = document.getElementById("world");
-
-  world.innerHTML = "";
-
-  for (let player of state.players) {
-
-    let div = document.createElement("div");
-
-    div.className = "player";
-
-    div.style.left = player.x + "px";
-    div.style.top = player.y + "px";
-
-    if (player.message) {
-
-      let bubble = document.createElement("div");
-
-      bubble.className = "bubble";
-
-      bubble.innerText = player.message;
-
-      div.appendChild(bubble);
+        console.log(err);
+        alert("server error");
 
     }
 
-    let img = document.createElement("img");
+}
 
-    img.src = "https://tinkr.tech" + player.image;
 
-    div.appendChild(img);
+async function refreshWorld(){
 
-    let name = document.createElement("div");
+    try{
 
-    name.className = "name";
+        let req = await fetch(serverUrl);
+        let data = await req.json();
 
-    name.innerText = player.username;
+        // quick reset
+        worldBox.innerHTML = "";
 
-    div.appendChild(name);
+        for(let i = 0; i < data.players.length; i++){
 
-    world.appendChild(div);
+            let currentPlayer = data.players[i];
 
-  }
+            let playerDiv = document.createElement("div");
+            playerDiv.className = "player";
+
+            playerDiv.style.left = currentPlayer.x + "px";
+            playerDiv.style.top = currentPlayer.y + "px";
+
+            if(currentPlayer.message && currentPlayer.message !== ""){
+
+                let msg = document.createElement("div");
+                msg.className = "bubble";
+                msg.innerText = currentPlayer.message;
+
+                playerDiv.appendChild(msg);
+            }
+
+            let skin = document.createElement("img");
+
+            skin.src = "https://tinkr.tech" + currentPlayer.image;
+
+            playerDiv.appendChild(skin);
+
+            let usernameText = document.createElement("div");
+            usernameText.className = "name";
+            usernameText.innerText = currentPlayer.username;
+
+            playerDiv.appendChild(usernameText);
+
+            worldBox.appendChild(playerDiv);
+
+        }
+
+    }catch(e){
+
+        console.log("failed loading world");
+        console.log(e);
+
+    }
 
 }
 
-async function move(x, y) {
 
-  if (!playerKey) {
-    alert("Join first");
-    return;
-  }
+async function movePlayer(posX, posY){
 
-  let response = await fetch(URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      action: "move",
-      player_key: playerKey,
-      x: x,
-      y: y
-    })
-  });
+    if(!savedKey){
+        alert("Join first");
+        return;
+    }
 
-  let data = await response.json();
+    let sendData = {
+        action:"move",
+        player_key:savedKey,
+        x:posX,
+        y:posY
+    };
 
-  console.log(data);
+    try{
 
-}
+        let req = await fetch(serverUrl,{
+            method:"POST",
+            headers:{
+                "Content-Type":"application/json"
+            },
+            body:JSON.stringify(sendData)
+        });
 
-async function talk() {
+        let data = await req.json();
 
-  if (!playerKey) {
-    alert("Join first");
-    return;
-  }
+        console.log("move:", data);
 
-  let message = document.getElementById("message").value;
+    }catch(err){
 
-  let response = await fetch(URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      action: "talk",
-      player_key: playerKey,
-      message: message
-    })
-  });
+        console.log(err);
 
-  let data = await response.json();
-
-  console.log(data);
+    }
 
 }
 
-document.getElementById("world").addEventListener("click", function(event) {
 
-  let rect = this.getBoundingClientRect();
+async function sendMessage(){
 
-  let x = event.clientX - rect.left;
+    if(savedKey == null){
+        alert("Join first");
+        return;
+    }
 
-  let y = event.clientY - rect.top;
+    let msgInput = document.getElementById("message");
+    let text = msgInput.value;
 
-  move(Math.floor(x), Math.floor(y));
+    if(text.trim() === ""){
+        return;
+    }
+
+    try{
+
+        let response = await fetch(serverUrl,{
+            method:"POST",
+            headers:{
+                "Content-Type":"application/json"
+            },
+            body:JSON.stringify({
+                action:"talk",
+                player_key:savedKey,
+                message:text
+            })
+        });
+
+        let resData = await response.json();
+
+        console.log(resData);
+
+        msgInput.value = "";
+
+    }catch(error){
+
+        console.log("message failed");
+        console.log(error);
+
+    }
+
+}
+
+
+
+worldBox.addEventListener("click", function(e){
+
+    let rect = worldBox.getBoundingClientRect();
+
+    let clickX = e.clientX - rect.left;
+    let clickY = e.clientY - rect.top;
+
+    movePlayer(Math.floor(clickX), Math.floor(clickY));
 
 });
 
-loadWorld();
 
-setInterval(loadWorld, 1000);
+refreshWorld();
+
+setInterval(function(){
+
+    refreshWorld();
+
+}, 1000);
 
 </script>
 
