@@ -1,49 +1,58 @@
 <!DOCTYPE html>
+
 <html lang="et">
+
 <head>
+
 <meta charset="UTF-8">
+
 <title>WanderWorld</title>
 
 <style>
 
+/* BODY = kogu lehe kujundus */
 body{
-    background-color:#222;
-    color:white;
-    font-family: Arial, sans-serif;
-    text-align:center;
+    background-color:#222; /* tume taust */
+    color:white; /* valge tekst */
+    font-family: Arial, sans-serif; /* font */
+    text-align:center; /* tekst keskele */
     margin:0;
     padding:0;
 }
 
+/* Mängumaailma kast */
 #world{
     width:800px;
     height:600px;
     margin:20px auto;
-    background:#5cab5c;
+    background:#5cab5c; /* roheline maa */
     border:4px solid #fff;
     position:relative;
     overflow:hidden;
-
 }
 
+/* Mängija konteiner */
 .player{
     position:absolute;
     text-align:center;
-    user-select:none;
+    user-select:none; /* ei saa teksti märkida */
 }
 
+/* Mängija pilt */
 .player img{
     width:32px;
     height:32px;
-    image-rendering:pixelated;
+    image-rendering:pixelated; /* pixel art stiil */
 }
 
+/* Kasutajanimi mängija all */
 .name{
     font-size:12px;
     margin-top:2px;
     text-shadow:1px 1px 2px black;
 }
 
+/* Jutumull */
 .bubble{
     background:white;
     color:black;
@@ -56,16 +65,19 @@ body{
     word-wrap:break-word;
 }
 
+/* Nuppude ja inputide ala */
 #controls{
     margin-top:20px;
 }
 
+/* Tekstikastid */
 input{
     padding:6px;
     border:none;
     border-radius:4px;
 }
 
+/* Nupud */
 button{
     padding:6px 10px;
     cursor:pointer;
@@ -73,6 +85,7 @@ button{
     border-radius:4px;
 }
 
+/* Hover efekt */
 button:hover{
     opacity:0.9;
 }
@@ -86,31 +99,45 @@ button:hover{
 
 <div id="controls">
 
+    <!-- Kasutajanime sisestamine -->
     <input type="text" id="username" placeholder="nimi">
+
+    <!-- Join nupp -->
     <button onclick="joinGame()">Join</button>
 
     <br><br>
 
+    <!-- Sõnumi sisestamine -->
     <input type="text" id="message" placeholder="ütle midagi">
+
+    <!-- Talk nupp -->
     <button onclick="sendMessage()">Talk</button>
 
 </div>
 
+<!-- Siia tekivad kõik mängijad -->
 <div id="world"></div>
 
 <script>
 
+/* Serveri aadress */
 const serverUrl = "https://tinkr.tech/sdb/poly/wander";
 
+/* Võtab localStorage-st mängija võtme */
 let savedKey = localStorage.getItem("player_key");
+
+/* Võtab world divi */
 let worldBox = document.getElementById("world");
 
 
+/* Funktsioon mänguga liitumiseks */
 async function joinGame(){
 
+    /* Võtab nime inputist */
     let usernameInput = document.getElementById("username");
     let username = usernameInput.value.trim();
 
+    /* Kontrollib kas nimi on tühi */
     if(username === ""){
         alert("Sisesta nimi");
         return;
@@ -118,6 +145,7 @@ async function joinGame(){
 
     try{
 
+        /* Saadab serverisse join requesti */
         let req = await fetch(serverUrl,{
             method:"POST",
             headers:{
@@ -129,14 +157,18 @@ async function joinGame(){
             })
         });
 
+        /* Võtab serveri vastuse */
         let result = await req.json();
 
         console.log("join response:", result);
 
+        /* Kui ühendamine õnnestus */
         if(result.ok){
 
+            /* Salvestab player key */
             savedKey = result.player_key;
 
+            /* Paneb võtme localStorageisse */
             localStorage.setItem("player_key", savedKey);
 
             alert("Successfully joined");
@@ -155,28 +187,35 @@ async function joinGame(){
 }
 
 
+/* Laeb kogu maailma uuesti */
 async function refreshWorld(){
 
     try{
 
+        /* Võtab serverist kõik mängijad */
         let req = await fetch(serverUrl);
         let data = await req.json();
 
-        // quick reset
+        /* Tühjendab vana maailma */
         worldBox.innerHTML = "";
 
+        /* Käib kõik mängijad läbi */
         for(let i = 0; i < data.players.length; i++){
 
             let currentPlayer = data.players[i];
 
+            /* Loob mängija divi */
             let playerDiv = document.createElement("div");
             playerDiv.className = "player";
 
+            /* Paneb mängija õigesse kohta */
             playerDiv.style.left = currentPlayer.x + "px";
             playerDiv.style.top = currentPlayer.y + "px";
 
+            /* Kui mängijal on sõnum */
             if(currentPlayer.message && currentPlayer.message !== ""){
 
+                /* Loob jutumulli */
                 let msg = document.createElement("div");
                 msg.className = "bubble";
                 msg.innerText = currentPlayer.message;
@@ -184,18 +223,21 @@ async function refreshWorld(){
                 playerDiv.appendChild(msg);
             }
 
+            /* Loob mängija pildi */
             let skin = document.createElement("img");
 
             skin.src = "https://tinkr.tech" + currentPlayer.image;
 
             playerDiv.appendChild(skin);
 
+            /* Loob kasutajanime */
             let usernameText = document.createElement("div");
             usernameText.className = "name";
             usernameText.innerText = currentPlayer.username;
 
             playerDiv.appendChild(usernameText);
 
+            /* Lisab mängija maailma */
             worldBox.appendChild(playerDiv);
 
         }
@@ -210,13 +252,16 @@ async function refreshWorld(){
 }
 
 
+/* Mängija liigutamine */
 async function movePlayer(posX, posY){
 
+    /* Kontrollib kas kasutaja on joininud */
     if(!savedKey){
         alert("Join first");
         return;
     }
 
+    /* Andmed mida serverisse saata */
     let sendData = {
         action:"move",
         player_key:savedKey,
@@ -226,6 +271,7 @@ async function movePlayer(posX, posY){
 
     try{
 
+        /* Saadab liikumise serverisse */
         let req = await fetch(serverUrl,{
             method:"POST",
             headers:{
@@ -247,22 +293,27 @@ async function movePlayer(posX, posY){
 }
 
 
+/* Sõnumi saatmine */
 async function sendMessage(){
 
+    /* Kontroll kas mängija on olemas */
     if(savedKey == null){
         alert("Join first");
         return;
     }
 
+    /* Võtab sõnumi inputist */
     let msgInput = document.getElementById("message");
     let text = msgInput.value;
 
+    /* Tühja sõnumit ei saada */
     if(text.trim() === ""){
         return;
     }
 
     try{
 
+        /* Saadab sõnumi serverisse */
         let response = await fetch(serverUrl,{
             method:"POST",
             headers:{
@@ -279,6 +330,7 @@ async function sendMessage(){
 
         console.log(resData);
 
+        /* Tühjendab inputi */
         msgInput.value = "";
 
     }catch(error){
@@ -291,21 +343,26 @@ async function sendMessage(){
 }
 
 
-
+/* Kui klikid maailmas */
 worldBox.addEventListener("click", function(e){
 
+    /* Võtab worldi asukoha */
     let rect = worldBox.getBoundingClientRect();
 
+    /* Arvutab klikikoha */
     let clickX = e.clientX - rect.left;
     let clickY = e.clientY - rect.top;
 
+    /* Liigutab mängija sinna */
     movePlayer(Math.floor(clickX), Math.floor(clickY));
 
 });
 
 
+/* Laeb maailma kohe */
 refreshWorld();
 
+/* Uuendab maailma iga 1 sekundi tagant */
 setInterval(function(){
 
     refreshWorld();
